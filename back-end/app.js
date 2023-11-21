@@ -1,12 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const app = express();
-const User = require('./models/user');
-const jwt = require('jsonwebtoken');
 const bookRoutes = require('./routes/book');
 const userRoutes = require('./routes/user');
 
-mongoose.connect('mongodb+srv://cardinaljv:1234@cluster0.dxma3vv.mongodb.net/?retryWrites=true&w=majority',
+mongoose.connect('mongodb+srv://cardinaljv:1234@cluster0.dxma3vv.mongodb.net/MonVieuxGrimoire',
     {
         useNewUrlParser: true,
         useUnifiedTopology: true
@@ -23,8 +21,9 @@ app.use((req, res, next) => {
 });
 
 // Create and Read 
-app.use('/api/auth',  userRoutes);
+app.use('/api/auth', userRoutes);
 // Create, Read, Update and Delete 
 app.use('/api/books', bookRoutes);
+app.use('/images', express.static('images'));
 
 module.exports = app;
