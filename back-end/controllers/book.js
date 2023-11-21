@@ -3,19 +3,42 @@ const fs = require('fs');
 const sharp = require('sharp');
 
 /* Create */
-exports.createBook = (req, res, next) => {
+exports.createBook = (req, res) => {
     const bookObject = JSON.parse(req.body.book);
     delete bookObject._id;
     delete bookObject._userId;
-    const book = new Book({
-        ...bookObject,
-        userId: req.auth.userId,
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
-    });
-    book.save()
-    .then(() => { res.status(201).json({message: 'Livre enregistré !'})})
-    .catch(error => { res.status(400).json( { error })})
- };
+    // Spécifiez un chemin de sortie différent pour le fichier redimensionné
+    const resizedFileName = `resized-${req.file.filename}`;
+    const resizedImagePath = `./images/${resizedFileName}`;
+    // Utilisez Sharp pour redimensionner l'image
+    sharp(req.file.path)
+        .resize(206, 260)
+        .toFile(resizedImagePath, (err, info) => {
+            if (err) {
+                return res.status(401).json({ error: err.message });
+            }
+            // Supprimez le fichier original après redimensionnement
+            fs.unlink(req.file.path, (unlinkErr) => {
+                if (unlinkErr) {
+                    console.error('Erreur lors de la suppression du fichier original:', unlinkErr);
+                }
+                // Créez l'objet Book avec l'URL redimensionnée
+                const book = new Book({
+                    ...bookObject,
+                    userId: req.auth.userId,
+                    imageUrl: `${req.protocol}://${req.get('host')}/images/${resizedFileName}`
+                });
+                // Sauvegardez le livre dans la base de données
+                book.save()
+                    .then(() => {
+                        res.status(201).json({ message: 'Livre enregistré !' });
+                    })
+                    .catch(error => {
+                        res.status(401).json({ error });
+                    });
+            })
+        })
+};
 
 exports.createRatingBook = (req, res) => {
     Book.findOne({ _id: req.params.id })
@@ -73,7 +96,7 @@ exports.getBooksWithBestRating = (req, res) => {
 /* - */
 
 /* Update */
-exports.updateOneBook = (req, res, next) => {
+exports.updateOneBook = (req, res) => {
     const bookObject = req.file ? {
         ...JSON.parse(req.body.book),
         imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
@@ -81,13 +104,33 @@ exports.updateOneBook = (req, res, next) => {
     delete bookObject._userId;
     Book.findOne({ _id: req.params.id })
         .then((book) => {
-            if (book.userId != req.auth.userId) {
-                res.status(401).json({ message: 'Non authorisé' });
-            } else {
-                Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
-                    .then(() => res.status(200).json({ message: 'Livre modifié!' }))
-                    .catch(error => res.status(401).json({ error }));
+            if (!book) {
+                return res.status(404).json({ message: 'Livre non trouvé' });
             }
+            if (book.userId !== req.auth.userId) {
+                return res.status(401).json({ message: 'Non autorisé' });
+            }
+            // Spécifiez un chemin de sortie différent pour le fichier redimensionné
+            const resizedFileName = `resized-${req.file.filename}`;
+            const resizedImagePath = `./images/${resizedFileName}`;
+            // Utilisez Sharp pour redimensionner l'image
+            sharp(req.file.path)
+                .resize(206, 260)
+                .toFile(resizedImagePath, (err, info) => {
+                    if (err) {
+                        return res.status(401).json({ error: err.message });
+                    }
+                    // Supprimez le fichier original après redimensionnement
+                    fs.unlink(req.file.path, (unlinkErr) => {
+                        if (unlinkErr) {
+                            console.error('Erreur lors de la suppression du fichier original:', unlinkErr);
+                        }
+                        // Mise à jour du livre avec la nouvelle URL redimensionnée
+                        Book.updateOne({ _id: req.params.id }, { ...bookObject, imageUrl: `${req.protocol}://${req.get('host')}/images/${resizedFileName}`, _id: req.params.id })
+                            .then(() => res.status(200).json({ message: 'Livre modifié!' }))
+                            .catch((updateError) => res.status(401).json({ error: updateError.message }));
+                    });
+                });
         })
         .catch((error) => {
             res.status(400).json({ error });
