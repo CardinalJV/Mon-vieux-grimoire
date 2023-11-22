@@ -8,11 +8,12 @@ exports.createBook = (req, res) => {
     delete bookObject._id;
     delete bookObject._userId;
     // Spécifiez un chemin de sortie différent pour le fichier redimensionné
-    const resizedFileName = `resized-${req.file.filename}`;
+    const resizedFileName = `resized-${req.file.filename.replace(/\.[^.]+$/, '')}.webp}`;
     const resizedImagePath = `./images/${resizedFileName}`;
     // Utilisez Sharp pour redimensionner l'image
     sharp(req.file.path)
         .resize(206, 260)
+        .toFormat('webp')
         .toFile(resizedImagePath, (err, info) => {
             if (err) {
                 return res.status(401).json({ error: err.message });
@@ -111,11 +112,12 @@ exports.updateOneBook = (req, res) => {
                 return res.status(401).json({ message: 'Non autorisé' });
             }
             // Spécifiez un chemin de sortie différent pour le fichier redimensionné
-            const resizedFileName = `resized-${req.file.filename}`;
+            const resizedFileName = `resized-${req.file.filename.replace(/\.[^.]+$/, '')}.webp}`;
             const resizedImagePath = `./images/${resizedFileName}`;
             // Utilisez Sharp pour redimensionner l'image
             sharp(req.file.path)
                 .resize(206, 260)
+                .toFormat('webp')
                 .toFile(resizedImagePath, (err, info) => {
                     if (err) {
                         return res.status(401).json({ error: err.message });
