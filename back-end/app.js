@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const app = express();
 const bookRoutes = require('./routes/book');
 const userRoutes = require('./routes/user');
+require('dotenv').config();
 
-mongoose.connect('mongodb+srv://cardinaljv:1234@cluster0.dxma3vv.mongodb.net/MonVieuxGrimoire',
+const dataBaseUrl = process.env.DATABASE_URL;
+
+mongoose.connect(dataBaseUrl,
     {
         useNewUrlParser: true,
         useUnifiedTopology: true
