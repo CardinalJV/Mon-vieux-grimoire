@@ -95,38 +95,43 @@ exports.getBooksWithBestRating = (req, res) => {
 
 /* Update */
 exports.updateOneBook = (req, res) => {
+    console.log(req.body);
     const bookObject = req.file ? {
         ...JSON.parse(req.body.book),
         imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
     } : { ...req.body };
     delete bookObject._userId;
     Book.findOne({ _id: req.params.id })
-        .then((book) => {
-            if (!book) {
-                return res.status(404).json({ message: 'Livre non trouvé' });
-            }
+        .then(book => {
             if (book.userId !== req.auth.userId) {
                 return res.status(401).json({ message: 'Non autorisé' });
-            }
-            // Spécifiez un chemin de sortie différent pour le fichier redimensionné
-            const resizedFileName = `resized-${req.file.filename.replace(/\.[^.]+$/, '')}.webp}`;
-            const resizedImagePath = `./images/${resizedFileName}`;
-            // Utilisez Sharp pour redimensionner l'image
-            sharp_config(req.file.path, resizedImagePath, 206, 260, 'webp', (err, info) => {
-                if (err) {
-                    return res.status(401).json({ error: err.message });
-                }
-                // Supprimez le fichier original après redimensionnement
-                fs.unlink(req.file.path, (unlinkErr) => {
-                    if (unlinkErr) {
-                        console.error('Erreur lors de la suppression du fichier original:', unlinkErr);
+            } else if (req.file) {
+                console.log(book.userId);
+                // Spécifiez un chemin de sortie différent pour le fichier redimensionné
+                const resizedFileName = `resized-${req.file.filename.replace(/\.[^.]+$/, '')}.webp}`;
+                const resizedImagePath = `./images/${resizedFileName}`;
+                // Utilisez Sharp pour redimensionner l'image
+                sharp_config(req.file.path, resizedImagePath, 206, 260, 'webp', (err, info) => {
+                    if (err) {
+                        return res.status(401).json({ error: err.message });
                     }
-                    // Mise à jour du livre avec la nouvelle URL redimensionnée
-                    Book.updateOne({ _id: req.params.id }, { ...bookObject, imageUrl: `${req.protocol}://${req.get('host')}/images/${resizedFileName}`, _id: req.params.id })
-                        .then(() => res.status(200).json({ message: 'Livre modifié!' }))
-                        .catch((updateError) => res.status(401).json({ error: updateError.message }));
+                    // Supprimez le fichier original après redimensionnement
+                    fs.unlink(req.file.path, (unlinkErr) => {
+                        if (unlinkErr) {
+                            console.error('Erreur lors de la suppression du fichier original:', unlinkErr);
+                        }
+                        // Mise à jour du livre avec la nouvelle URL redimensionnée
+                        Book.updateOne({ _id: req.params.id }, { ...bookObject, imageUrl: `${req.protocol}://${req.get('host')}/images/${resizedFileName}`, _id: req.params.id })
+                            .then(() => res.status(200).json({ message: 'Livre modifié!' }))
+                            .catch((updateError) => res.status(401).json({ error: updateError.message }));
+                    });
                 });
-            });
+            } else {
+                Book.updateOne({ _id: req.params.id }, { ...bookObject })
+                    .then(() => res.status(200).json({ message: 'Livre modifié!' }))
+                    .catch((updateError) => res.status(500).json({ error: updateError.message }));
+
+            }
         })
         .catch((error) => {
             res.status(400).json({ error });
