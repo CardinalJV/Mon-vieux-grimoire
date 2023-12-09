@@ -1,6 +1,5 @@
 const Book = require('../models/book');
 const fs = require('fs');
-//const sharp = require('../middleware/sharp-config');
 const sharp = require('sharp');
 
 /* Create */
